@@ -1,0 +1,45 @@
+{
+  "name": "controle-nf-chevron-pc-local",
+  "version": "1.0.0",
+  "description": "Aplicativo PC offline para controle de NF, devoluções, garantias e descontos em boleto com banco local no computador.",
+  "main": "electron/main.js",
+  "private": true,
+  "author": "thIAguinho Soluções",
+  "scripts": {
+    "electron:start": "electron .",
+    "pc:win": "electron-builder --win nsis portable --x64 --publish never",
+    "pc:dir": "electron-builder --dir --publish never"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "br.com.thiaguinho.controlenfchevron.pc",
+    "productName": "Controle NF Chevron",
+    "directories": {
+      "output": "dist-pc"
+    },
+    "files": [
+      "src/**/*",
+      "electron/**/*",
+      "package.json",
+      "README.md"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Controle NF Chevron"
+    },
+    "publish": null
+  }
+}

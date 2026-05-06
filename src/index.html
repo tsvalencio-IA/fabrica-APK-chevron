@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Controle NF Chevron - PC Offline</title>
+  <style>
+    :root {
+      --bosch-blue: #002B49;
+      --bosch-red: #E20015;
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --text: #111827;
+      --success: #16a34a;
+      --warning: #f59e0b;
+      --danger: #dc2626;
+      --purple: #7c3aed;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    button, input, select, textarea { font: inherit; }
+    .hidden { display: none !important; }
+    .screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 10; }
+    .loading { background: #fff; flex-direction: column; gap: 14px; }
+    .spinner { width: 42px; height: 42px; border: 5px solid #d1d5db; border-top-color: var(--bosch-blue); border-radius: 999px; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .login-screen { background: var(--bosch-blue); padding: 18px; }
+    .login-card { background: #fff; border-top: 8px solid var(--bosch-red); border-radius: 14px; width: min(440px, 100%); padding: 28px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+    .login-logo { text-align: center; margin-bottom: 20px; }
+    .login-logo .icon { font-size: 46px; color: var(--bosch-blue); }
+    .login-logo h1 { font-size: 24px; margin: 8px 0 4px; }
+    .login-logo p { margin: 0; color: var(--muted); }
+    .nav { background: var(--bosch-blue); color: #fff; padding: 14px 18px; box-shadow: 0 2px 12px rgba(0,0,0,.18); }
+    .nav-inner { max-width: 1320px; margin: 0 auto; display: flex; gap: 14px; align-items: center; justify-content: space-between; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; }
+    .nav-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+    .small-info { font-size: 12px; opacity: .82; }
+    main { max-width: 1320px; margin: 0 auto; padding: 18px; }
+    .grid-main { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    .card { background: var(--card); border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,.08); overflow: hidden; border-top: 4px solid #9ca3af; }
+    .card.red { border-top-color: var(--bosch-red); }
+    .card.blue { border-top-color: var(--bosch-blue); }
+    .card-header { padding: 15px 18px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .card-header.clickable { cursor: pointer; }
+    .card-header h2, .card-header h3 { margin: 0; font-size: 18px; }
+    .card-body { padding: 18px; }
+    .row { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
+    .col-12 { grid-column: span 12; }
+    .col-6 { grid-column: span 6; }
+    .col-4 { grid-column: span 4; }
+    .col-3 { grid-column: span 3; }
+    .col-2 { grid-column: span 2; }
+    label { display: block; color: #374151; font-size: 12px; font-weight: 800; margin: 0 0 6px; }
+    input, select, textarea { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 11px; outline: none; background: #fff; color: var(--text); }
+    input:focus, select:focus, textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.16); }
+    textarea { resize: vertical; }
+    .upper { text-transform: uppercase; }
+    .btn { border: 0; border-radius: 9px; padding: 10px 14px; font-weight: 800; cursor: pointer; transition: .15s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
+    .btn-blue { background: var(--bosch-blue); color: #fff; }
+    .btn-blue:hover { background: #001a2d; }
+    .btn-red { background: var(--bosch-red); color: #fff; }
+    .btn-red:hover { background: #b80011; }
+    .btn-gray { background: #e5e7eb; color: #111827; }
+    .btn-gray:hover { background: #d1d5db; }
+    .btn-green { background: #16a34a; color: #fff; }
+    .btn-green:hover { background: #15803d; }
+    .btn-yellow { background: #f59e0b; color: #111827; }
+    .btn-yellow:hover { background: #d97706; color: #fff; }
+    .btn-purple { background: #7c3aed; color: #fff; }
+    .btn-purple:hover { background: #6d28d9; }
+    .btn-sm { padding: 7px 9px; font-size: 12px; border-radius: 7px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .pecas-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; }
+    .peca-item { display: grid; grid-template-columns: 1fr 90px 140px 40px; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .peca-item + .peca-item { border-top: 1px dashed #d1d5db; padding-top: 8px; }
+    .total-line { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 8px; }
+    .total { color: var(--bosch-blue); font-weight: 900; font-size: 18px; }
+    .filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+    .filter-field { flex: 1; min-width: 150px; }
+    .table-wrap { width: 100%; overflow-x: auto; background: #fff; padding: 4px; }
+    table { width: 100%; min-width: 1040px; border-collapse: collapse; font-size: 13px; }
+    th { background: #f3f4f6; color: #4b5563; text-align: left; padding: 10px 9px; border-bottom: 1px solid #d1d5db; }
+    td { padding: 10px 9px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+    tr:hover td { background: #f9fafb; }
+    tfoot td { background: #f9fafb; font-weight: 900; border-top: 2px solid #d1d5db; }
+    .right { text-align: right; }
+    .center { text-align: center; }
+    .nowrap { white-space: nowrap; }
+    .badge { display: inline-block; padding: 4px 8px; font-size: 11px; border-radius: 999px; border: 1px solid transparent; font-weight: 900; }
+    .badge-blue { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
+    .badge-purple { background: #ede9fe; color: #5b21b6; border-color: #ddd6fe; }
+    .badge-yellow { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+    .badge-green { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+    .badge-red { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+    .badge-gray { background: #f3f4f6; color: #374151; border-color: #d1d5db; }
+    .note { font-size: 12px; color: var(--muted); line-height: 1.35; }
+    .alert { padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.35; }
+    .alert-yellow { background: #fffbeb; border: 1px solid #fde68a; color: #7c2d12; }
+    .alert-red { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+    .alert-green { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+    .empty { text-align: center; color: #6b7280; padding: 40px 10px; }
+    .footer { text-align: center; color: #6b7280; font-size: 12px; padding: 18px 0 28px; }
+    .footer strong { color: #111827; }
+    .pdf-header { display: none; }
+    .db-path { font-size: 11px; color: #4b5563; word-break: break-all; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; }
+    .modal-help { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; padding: 10px 12px; border-radius: 10px; margin-bottom: 12px; }
+    @media (max-width: 820px) {
+      main { padding: 12px; }
+      .col-6, .col-4, .col-3, .col-2 { grid-column: span 12; }
+      .peca-item { grid-template-columns: 1fr; }
+      .nav-inner { align-items: flex-start; flex-direction: column; }
+      .nav-actions { justify-content: flex-start; }
+      .total-line { align-items: flex-start; flex-direction: column; }
+    }
+    @media print {
+      body { background: #fff; }
+      .screen, .nav, .no-print, .coluna-acoes, #form-card, #filters-card, #backup-card, .footer { display: none !important; }
+      main { max-width: none; padding: 0; }
+      .card { box-shadow: none; border: 0; }
+      .card-header { border: 0; padding: 0 0 8px; }
+      .card-body { padding: 0; }
+      .table-wrap { overflow: visible; padding: 0; }
+      table { min-width: 0; font-size: 10px; }
+      th, td { padding: 5px; }
+      .pdf-header { display: block; margin-bottom: 14px; border-bottom: 2px solid var(--bosch-blue); padding-bottom: 8px; }
+      .pdf-header h1 { margin: 0 0 4px; color: var(--bosch-blue); font-size: 22px; }
+      .pdf-header p { margin: 0; color: #4b5563; font-size: 12px; }
+      tr { page-break-inside: avoid; break-inside: avoid-page; }
+      thead { display: table-header-group; }
+      tfoot { display: table-footer-group; }
+    }
+  </style>
+</head>
+<body>
+  <div id="loading-screen" class="screen loading">
+    <div class="spinner"></div>
+    <strong>Iniciando sistema local...</strong>
+    <span class="note">Criando/verificando banco no computador.</span>
+  </div>
+
+  <div id="login-screen" class="screen login-screen hidden">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="icon">🚗</div>
+        <h1>Controle NF Chevron</h1>
+        <p>Banco local offline no computador</p>
+      </div>
+      <div class="modal-help">
+        Primeiro acesso local: <b>admin@local</b> / <b>123456</b>
+      </div>
+      <form id="form-login">
+        <div style="margin-bottom: 12px;">
+          <label for="login-email">E-mail</label>
+          <input type="email" id="login-email" required autocomplete="username" placeholder="admin@local" />
+        </div>
+        <div style="margin-bottom: 12px;">
+          <label for="login-senha">Senha</label>
+          <input type="password" id="login-senha" required autocomplete="current-password" placeholder="123456" />
+        </div>
+        <label style="display:flex; align-items:center; gap:8px; font-weight:700; margin-bottom:14px;">
+          <input type="checkbox" id="lembrar-senha" style="width:auto;" /> Manter-me conectado neste computador
+        </label>
+        <p id="login-error" class="alert alert-red hidden"></p>
+        <button id="btn-login" class="btn btn-blue" style="width:100%;" type="submit">Entrar no Sistema</button>
+      </form>
+    </div>
+  </div>
+
+  <nav id="main-nav" class="nav hidden">
+    <div class="nav-inner">
+      <div class="brand"><span>🚗</span><span>Controle de Devoluções / Garantias - Chevron Bosch</span></div>
+      <div class="nav-actions">
+        <span id="user-info" class="small-info"></span>
+        <button id="btn-open-folder" class="btn btn-gray btn-sm" type="button">Abrir pasta do banco</button>
+        <button id="btn-logout" class="btn btn-red btn-sm" type="button">Sair</button>
+      </div>
+    </div>
+  </nav>
+
+  <main id="app-content" class="hidden">
+    <section id="backup-card" class="card blue" style="margin-bottom:16px;">
+      <div class="card-header">
+        <h3>Banco local e segurança dos dados</h3>
+        <div class="actions no-print">
+          <button id="btn-export-json" class="btn btn-green btn-sm" type="button">Exportar backup JSON</button>
+          <button id="btn-import-json" class="btn btn-purple btn-sm" type="button">Importar backup JSON</button>
+          <button id="btn-export-csv" class="btn btn-blue btn-sm" type="button">Exportar planilha CSV</button>
+          <button id="btn-import-csv" class="btn btn-yellow btn-sm" type="button">Importar planilha CSV</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-8 col-12">
+            <div id="db-path" class="db-path">Carregando caminho do banco...</div>
+          </div>
+          <div class="col-4 col-12">
+            <label style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+              <input type="checkbox" id="modo-substituir-importacao" style="width:auto;" /> Ao importar, substituir todo o banco atual
+            </label>
+            <p class="note">Desmarcado: importa e mescla. Marcado: apaga o banco atual e substitui pelo arquivo importado. O app cria backup automático antes de importar.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="form-card" class="card red" style="margin-bottom:16px;">
+      <div class="card-header clickable" id="toggle-form-btn">
+        <h2>Nova Nota / Devolução / Garantia</h2>
+        <strong id="toggle-form-icon">▼</strong>
+      </div>
+      <div id="form-container" class="card-body hidden">
+        <form id="form-devolucao">
+          <div class="row">
+            <div class="col-3">
+              <label>Tipo de Processo</label>
+              <select id="tipo_processo" required>
+                <option value="Devolução">Devolução</option>
+                <option value="Garantia">Garantia</option>
+              </select>
+            </div>
+            <div class="col-3">
+              <label>Fornecedor</label>
+              <input type="text" id="fornecedor" required class="upper" placeholder="Ex: Fortlub" />
+            </div>
+            <div class="col-3">
+              <label>Data</label>
+              <input type="date" id="data_registro" required />
+            </div>
+            <div class="col-3">
+              <label>Status inicial</label>
+              <select id="status_inicial">
+                <option value="pendente">Pendente</option>
+                <option value="descontado_boleto">Descontado no boleto</option>
+                <option value="recebido">Recebido</option>
+                <option value="concluido">Concluído</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:12px;">
+            <div class="col-6">
+              <label>NF Compra</label>
+              <input type="text" id="nf_compra" required placeholder="Número da NF de compra" />
+            </div>
+            <div class="col-6">
+              <label>NF Devolução / Garantia</label>
+              <input type="text" id="nf_devolucao" required placeholder="Número da NF devolução/garantia" />
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:12px;">
+            <div class="col-4">
+              <label>Boleto / Parcela de desconto</label>
+              <input type="text" id="boleto_referencia" placeholder="Ex: boleto 29/12/25, parcela 1" />
+            </div>
+            <div class="col-4">
+              <label>Data do desconto no boleto</label>
+              <input type="date" id="data_desconto_boleto" />
+            </div>
+            <div class="col-4">
+              <label>Valor descontado / recebido</label>
+              <input type="number" id="valor_descontado" step="0.01" min="0" placeholder="0,00" />
+            </div>
+          </div>
+
+          <div class="pecas-box" style="margin-top:14px;">
+            <label>Peças / Produtos</label>
+            <div id="lista-pecas"></div>
+            <div class="total-line">
+              <button type="button" id="btn-add-peca" class="btn btn-gray btn-sm">+ Adicionar Peça</button>
+              <div class="total">Total: <span id="valor-total-display">R$ 0,00</span></div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px;">
+            <label>Observações</label>
+            <textarea id="observacoes" rows="3" placeholder="Ex: Desc 1parc 31,56 para 29/12/25"></textarea>
+          </div>
+
+          <div class="actions" style="margin-top:14px; justify-content:flex-end;">
+            <button type="button" id="btn-limpar-form" class="btn btn-gray">Limpar</button>
+            <button type="submit" id="btn-salvar" class="btn btn-blue">Salvar no banco local</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section id="filters-card" class="card" style="margin-bottom:16px;">
+      <div class="card-header"><h3>Filtros e relatórios</h3></div>
+      <div class="card-body">
+        <div class="filters">
+          <div class="filter-field">
+            <label>Data Início</label>
+            <input type="date" id="filtro-data-inicio" />
+          </div>
+          <div class="filter-field">
+            <label>Data Fim</label>
+            <input type="date" id="filtro-data-fim" />
+          </div>
+          <div class="filter-field">
+            <label>Fornecedor</label>
+            <input type="text" id="filtro-fornecedor" class="upper" placeholder="Ex: Fortlub" />
+          </div>
+          <div class="filter-field">
+            <label>Tipo</label>
+            <select id="filtro-tipo">
+              <option value="todos">Todos</option>
+              <option value="Devolução">Devolução</option>
+              <option value="Garantia">Garantia</option>
+            </select>
+          </div>
+          <div class="filter-field">
+            <label>Status</label>
+            <select id="filtro-status">
+              <option value="todos">Todos</option>
+              <option value="pendente">Pendente</option>
+              <option value="descontado_boleto">Descontado no boleto</option>
+              <option value="recebido">Recebido</option>
+              <option value="concluido">Concluído</option>
+            </select>
+          </div>
+          <button id="btn-filtrar" class="btn btn-blue" type="button">Filtrar</button>
+          <button id="btn-limpar-filtros" class="btn btn-gray" type="button">Limpar</button>
+          <button id="btn-pdf" class="btn btn-red" type="button">Exportar PDF / Imprimir</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2>Acompanhamento</h2>
+        <div class="actions no-print">
+          <span class="badge badge-yellow">Pendente</span>
+          <span class="badge badge-red">+20 dias</span>
+          <span class="badge badge-blue">Descontado</span>
+          <span class="badge badge-green">Recebido/Concluído</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="pdf-header" id="cabecalho-pdf">
+          <h1>Chevron Bosch Car Service</h1>
+          <p>Relatório de Devoluções, Garantias e Recebimentos</p>
+          <p id="data-relatorio-pdf"></p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Fornecedor / Tipo</th>
+                <th>NF Compra ➜ NF Dev/Gar</th>
+                <th>Produtos</th>
+                <th class="right">Valor Total</th>
+                <th>Recebimento / Boleto</th>
+                <th class="center">Status</th>
+                <th class="center coluna-acoes">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tabela-corpo"></tbody>
+            <tfoot id="tabela-rodape">
+              <tr>
+                <td colspan="4" class="right">Total do relatório:</td>
+                <td class="right" id="total-geral-rodape">R$ 0,00</td>
+                <td colspan="3"></td>
+              </tr>
+            </tfoot>
+          </table>
+          <div id="empty-state" class="empty hidden">Nenhum processo encontrado.</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="footer">Powered by <strong>thIAguinho Soluções</strong></div>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const state = {
+      user: null,
+      dadosGlobais: [],
+      dadosFiltrados: [],
+      appInfo: null
+    };
+
+    function money(value) {
+      const n = Number(value || 0);
+      return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+    function dateBR(value) {
+      if (!value) return '-';
+      const parts = String(value).split('-');
+      if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      return value;
+    }
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>'"]/g, (ch) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[ch]));
+    }
+    function calcularDias(dataRegistro) {
+      if (!dataRegistro) return 0;
+      const hoje = new Date(); hoje.setHours(0,0,0,0);
+      const data = new Date(dataRegistro + 'T00:00:00'); data.setHours(0,0,0,0);
+      return Math.ceil(Math.abs(hoje - data) / (1000 * 60 * 60 * 24));
+    }
+    function statusLabel(status) {
+      const map = {
+        pendente: 'Pendente',
+        descontado_boleto: 'Descontado no boleto',
+        recebido: 'Recebido',
+        concluido: 'Concluído'
+      };
+      return map[status] || 'Pendente';
+    }
+    function statusBadge(status) {
+      const cls = {
+        pendente: 'badge-yellow',
+        descontado_boleto: 'badge-blue',
+        recebido: 'badge-green',
+        concluido: 'badge-green'
+      }[status] || 'badge-gray';
+      return `<span class="badge ${cls}">${statusLabel(status)}</span>`;
+    }
+    function tipoBadge(tipo) {
+      return tipo === 'Garantia'
+        ? `<span class="badge badge-purple">Garantia</span>`
+        : `<span class="badge badge-blue">Devolução</span>`;
+    }
+    function proximoStatus(status) {
+      const ordem = ['pendente', 'descontado_boleto', 'recebido', 'concluido'];
+      const idx = ordem.indexOf(status);
+      return ordem[(idx + 1) % ordem.length];
+    }
+
+    function criarLinhaPeca(dados = {}, fixa = false) {
+      const div = document.createElement('div');
+      div.className = 'peca-item';
+      div.innerHTML = `
+        <input type="text" class="desc" required placeholder="Descrição do Produto" value="${escapeHtml(dados.descricao || '')}" />
+        <input type="number" class="qtd" min="1" required placeholder="Qtd" value="${escapeHtml(dados.qtd || 1)}" />
+        <input type="number" class="vunit" step="0.01" min="0" required placeholder="V. Unit (R$)" value="${escapeHtml(dados.vunit || '')}" />
+        <button type="button" class="btn btn-red btn-sm btn-remover" ${fixa ? 'disabled title="A primeira peça não pode ser removida"' : 'title="Remover peça"'}>🗑</button>
+      `;
+      if (!fixa) div.querySelector('.btn-remover').addEventListener('click', () => { div.remove(); calcularTotal(); });
+      div.querySelectorAll('input').forEach((input) => input.addEventListener('input', calcularTotal));
+      $('lista-pecas').appendChild(div);
+      calcularTotal();
+    }
+
+    function resetPecas() {
+      $('lista-pecas').innerHTML = '';
+      criarLinhaPeca({}, true);
+    }
+
+    function calcularTotal() {
+      let total = 0;
+      document.querySelectorAll('.peca-item').forEach((row) => {
+        const qtd = Number.parseInt(row.querySelector('.qtd').value, 10) || 0;
+        const vunit = Number.parseFloat(row.querySelector('.vunit').value) || 0;
+        total += qtd * vunit;
+      });
+      $('valor-total-display').textContent = money(total);
+      return total;
+    }
+
+    function coletarPecas() {
+      const pecas = [];
+      document.querySelectorAll('.peca-item').forEach((row) => {
+        const descricao = row.querySelector('.desc').value.trim();
+        if (!descricao) return;
+        pecas.push({
+          descricao,
+          qtd: Number.parseInt(row.querySelector('.qtd').value, 10) || 1,
+          vunit: Number.parseFloat(row.querySelector('.vunit').value) || 0
+        });
+      });
+      return pecas;
+    }
+
+    function limparFormulario() {
+      $('form-devolucao').reset();
+      $('data_registro').valueAsDate = new Date();
+      $('status_inicial').value = 'pendente';
+      resetPecas();
+      calcularTotal();
+    }
+
+    async function carregarTudo() {
+      state.dadosGlobais = await window.sistemaLocal.listar();
+      aplicarFiltros();
+      const info = await window.sistemaLocal.info();
+      state.appInfo = info;
+      $('db-path').innerHTML = `<b>Banco local:</b> ${escapeHtml(info.dbFile)}<br><b>Pasta:</b> ${escapeHtml(info.rootDir)}<br><b>Total no banco:</b> ${info.totalRegistros} registro(s)`;
+    }
+
+    function aplicarFiltros() {
+      const dataInicio = $('filtro-data-inicio').value;
+      const dataFim = $('filtro-data-fim').value;
+      const fornecedor = $('filtro-fornecedor').value.trim().toUpperCase();
+      const status = $('filtro-status').value;
+      const tipo = $('filtro-tipo').value;
+      let dados = state.dadosGlobais.filter((item) => {
+        if (dataInicio && item.data_registro < dataInicio) return false;
+        if (dataFim && item.data_registro > dataFim) return false;
+        if (fornecedor && !String(item.fornecedor || '').toUpperCase().includes(fornecedor)) return false;
+        if (status !== 'todos' && item.status !== status) return false;
+        if (tipo !== 'todos' && item.tipo_processo !== tipo) return false;
+        return true;
+      });
+      dados.sort((a, b) => {
+        const peso = { pendente: 0, descontado_boleto: 1, recebido: 2, concluido: 3 };
+        const pa = peso[a.status] ?? 9;
+        const pb = peso[b.status] ?? 9;
+        if (pa !== pb) return pa - pb;
+        return new Date(b.data_registro || 0) - new Date(a.data_registro || 0);
+      });
+      state.dadosFiltrados = dados;
+      renderizarTabela(dados);
+    }
+
+    function limparFiltros() {
+      $('filtro-data-inicio').value = '';
+      $('filtro-data-fim').value = '';
+      $('filtro-fornecedor').value = '';
+      $('filtro-status').value = 'todos';
+      $('filtro-tipo').value = 'todos';
+      aplicarFiltros();
+    }
+
+    function renderizarTabela(devolucoes) {
+      const tbody = $('tabela-corpo');
+      tbody.innerHTML = '';
+      let soma = 0;
+      if (!devolucoes.length) {
+        $('empty-state').classList.remove('hidden');
+        $('tabela-rodape').classList.add('hidden');
+        return;
+      }
+      $('empty-state').classList.add('hidden');
+      $('tabela-rodape').classList.remove('hidden');
+      devolucoes.forEach((item) => {
+        const dias = calcularDias(item.data_registro);
+        const isAtrasado = item.status === 'pendente' && dias >= 20;
+        const valor = Number(item.valor || 0);
+        soma += valor;
+        const pecasHtml = Array.isArray(item.pecas) && item.pecas.length
+          ? `<ul style="margin:0; padding-left:17px;">${item.pecas.map((p) => `<li><b>${escapeHtml(p.qtd)}x</b> ${escapeHtml(p.descricao)} <span class="note">(${money(p.vunit)})</span></li>`).join('')}</ul>`
+          : '<span class="note">Sem peças registradas</span>';
+        const recebimento = [
+          item.boleto_referencia ? `<div><b>Boleto:</b> ${escapeHtml(item.boleto_referencia)}</div>` : '',
+          item.data_desconto_boleto ? `<div><b>Data:</b> ${dateBR(item.data_desconto_boleto)}</div>` : '',
+          item.valor_descontado ? `<div><b>Descontado:</b> ${money(item.valor_descontado)}</div>` : ''
+        ].join('') || '<span class="note">Não informado</span>';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="nowrap"><b>${dateBR(item.data_registro)}</b>${isAtrasado ? `<div style="margin-top:6px;" class="badge badge-red">+20 dias (${dias}d)</div>` : ''}</td>
+          <td><b style="color:var(--bosch-blue);">${escapeHtml(item.fornecedor)}</b><div style="margin-top:5px;">${tipoBadge(item.tipo_processo)}</div></td>
+          <td><span class="note">C: ${escapeHtml(item.nf_compra)}</span><br><b>D: ${escapeHtml(item.nf_devolucao)}</b></td>
+          <td>${pecasHtml}${item.observacoes ? `<div class="alert alert-yellow" style="margin-top:8px;">${escapeHtml(item.observacoes)}</div>` : ''}</td>
+          <td class="right nowrap"><b>${money(valor)}</b></td>
+          <td>${recebimento}</td>
+          <td class="center">${statusBadge(item.status)}</td>
+          <td class="center coluna-acoes nowrap">
+            <button class="btn btn-blue btn-sm" type="button" data-status="${escapeHtml(item.id)}">Avançar</button>
+            <button class="btn btn-red btn-sm" type="button" data-delete="${escapeHtml(item.id)}">Excluir</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      $('total-geral-rodape').textContent = money(soma);
+      tbody.querySelectorAll('[data-status]').forEach((btn) => btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-status');
+        const item = state.dadosGlobais.find((x) => x.id === id);
+        if (!item) return;
+        await window.sistemaLocal.atualizarStatus(id, proximoStatus(item.status));
+        await carregarTudo();
+      }));
+      tbody.querySelectorAll('[data-delete]').forEach((btn) => btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-delete');
+        if (!confirm('Tem certeza que deseja apagar este registro?')) return;
+        await window.sistemaLocal.deletar(id);
+        await carregarTudo();
+      }));
+    }
+
+    async function entrarSistema(user, persist = false) {
+      state.user = user;
+      if (persist) localStorage.setItem('controleNFUser', JSON.stringify(user));
+      $('login-screen').classList.add('hidden');
+      $('main-nav').classList.remove('hidden');
+      $('app-content').classList.remove('hidden');
+      $('user-info').textContent = `Logado como: ${user.email}`;
+      await carregarTudo();
+    }
+
+    async function init() {
+      if (!window.sistemaLocal) {
+        $('loading-screen').innerHTML = '<div class="alert alert-red">Este arquivo precisa rodar dentro do aplicativo Electron para acessar o banco local do computador.</div>';
+        return;
+      }
+      resetPecas();
+      $('data_registro').valueAsDate = new Date();
+      const info = await window.sistemaLocal.info();
+      state.appInfo = info;
+      $('loading-screen').classList.add('hidden');
+      const saved = localStorage.getItem('controleNFUser');
+      if (saved) {
+        try { await entrarSistema(JSON.parse(saved), true); return; } catch (_) {}
+      }
+      $('login-email').value = info.usuarioInicial || 'admin@local';
+      $('login-screen').classList.remove('hidden');
+    }
+
+    $('form-login').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const btn = $('btn-login');
+      btn.disabled = true;
+      btn.textContent = 'Entrando...';
+      $('login-error').classList.add('hidden');
+      try {
+        const res = await window.sistemaLocal.login($('login-email').value, $('login-senha').value);
+        if (!res.ok) throw new Error(res.message || 'Erro ao entrar.');
+        localStorage.removeItem('controleNFUser');
+        await entrarSistema(res.user, $('lembrar-senha').checked);
+      } catch (error) {
+        $('login-error').textContent = error.message || 'Erro ao entrar.';
+        $('login-error').classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Entrar no Sistema';
+      }
+    });
+
+    $('btn-logout').addEventListener('click', () => {
+      localStorage.removeItem('controleNFUser');
+      state.user = null;
+      location.reload();
+    });
+
+    $('btn-open-folder').addEventListener('click', () => window.sistemaLocal.abrirPasta());
+    $('toggle-form-btn').addEventListener('click', () => {
+      $('form-container').classList.toggle('hidden');
+      $('toggle-form-icon').textContent = $('form-container').classList.contains('hidden') ? '▼' : '▲';
+    });
+    $('btn-add-peca').addEventListener('click', () => criarLinhaPeca({}, false));
+    $('btn-limpar-form').addEventListener('click', limparFormulario);
+    $('btn-filtrar').addEventListener('click', aplicarFiltros);
+    $('btn-limpar-filtros').addEventListener('click', limparFiltros);
+    ['filtro-data-inicio','filtro-data-fim','filtro-fornecedor','filtro-status','filtro-tipo'].forEach((id) => $(id).addEventListener('change', aplicarFiltros));
+    $('filtro-fornecedor').addEventListener('input', aplicarFiltros);
+
+    $('form-devolucao').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const pecas = coletarPecas();
+      if (!pecas.length) { alert('Adicione pelo menos uma peça/produto.'); return; }
+      const btn = $('btn-salvar');
+      btn.disabled = true;
+      btn.textContent = 'Salvando no PC...';
+      try {
+        await window.sistemaLocal.criar({
+          tipo_processo: $('tipo_processo').value,
+          fornecedor: $('fornecedor').value,
+          data_registro: $('data_registro').value,
+          nf_compra: $('nf_compra').value,
+          nf_devolucao: $('nf_devolucao').value,
+          pecas,
+          valor: calcularTotal(),
+          observacoes: $('observacoes').value,
+          status: $('status_inicial').value,
+          boleto_referencia: $('boleto_referencia').value,
+          data_desconto_boleto: $('data_desconto_boleto').value,
+          valor_descontado: Number.parseFloat($('valor_descontado').value) || 0
+        });
+        limparFormulario();
+        $('form-container').classList.add('hidden');
+        $('toggle-form-icon').textContent = '▼';
+        await carregarTudo();
+        alert('Registro salvo no banco local do computador.');
+      } catch (error) {
+        alert('Erro ao salvar: ' + (error.message || error));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Salvar no banco local';
+      }
+    });
+
+    $('btn-export-json').addEventListener('click', async () => {
+      const res = await window.sistemaLocal.exportarBackupJson();
+      if (res.ok) alert('Backup JSON salvo em:\n' + res.filePath);
+    });
+    $('btn-import-json').addEventListener('click', async () => {
+      const mode = $('modo-substituir-importacao').checked ? 'replace' : 'merge';
+      const msg = mode === 'replace'
+        ? 'Isso vai SUBSTITUIR o banco atual pelo backup importado. O app criará um backup automático antes. Continuar?'
+        : 'Isso vai MESCLAR o backup importado com o banco atual. O app criará um backup automático antes. Continuar?';
+      if (!confirm(msg)) return;
+      const res = await window.sistemaLocal.importarBackupJson(mode);
+      if (res.ok) { alert(`Importação concluída. Importados: ${res.imported}. Total atual: ${res.total}.`); await carregarTudo(); }
+    });
+    $('btn-export-csv').addEventListener('click', async () => {
+      const res = await window.sistemaLocal.exportarCsv();
+      if (res.ok) alert('Planilha CSV salva em:\n' + res.filePath);
+    });
+    $('btn-import-csv').addEventListener('click', async () => {
+      const mode = $('modo-substituir-importacao').checked ? 'replace' : 'merge';
+      const msg = mode === 'replace'
+        ? 'Isso vai SUBSTITUIR o banco atual pela planilha CSV importada. O app criará um backup automático antes. Continuar?'
+        : 'Isso vai MESCLAR a planilha CSV importada com o banco atual. O app criará um backup automático antes. Continuar?';
+      if (!confirm(msg)) return;
+      const res = await window.sistemaLocal.importarCsv(mode);
+      if (res.ok) { alert(`Planilha importada. Linhas: ${res.imported}. Total atual: ${res.total}.`); await carregarTudo(); }
+    });
+    $('btn-pdf').addEventListener('click', () => {
+      $('data-relatorio-pdf').textContent = 'Relatório gerado em: ' + new Date().toLocaleString('pt-BR');
+      window.print();
+    });
+
+    init();
+  </script>
+</body>
+</html>
