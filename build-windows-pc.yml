@@ -1,0 +1,37 @@
+name: Gerar Aplicativo Windows PC
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  windows-pc:
+    name: Gerar instalador e portable Windows
+    runs-on: windows-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependências
+        run: npm install
+
+      - name: Gerar aplicativo Windows
+        run: npm run pc:win
+        env:
+          GH_TOKEN: ""
+
+      - name: Enviar arquivos gerados
+        uses: actions/upload-artifact@v4
+        with:
+          name: CONTROLE-NF-CHEVRON-WINDOWS-PC
+          path: |
+            dist-pc/*.exe
+            dist-pc/*.blockmap
